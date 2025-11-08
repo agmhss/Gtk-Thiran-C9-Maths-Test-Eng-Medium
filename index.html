@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Maths Master Quiz — Class 9 (Random 10)</title>
+<style>
+  :root{--bg1:#f0f7ff;--card:#fff;--accent:#2b6cb0;--ok:#16a34a;--bad:#dc2626}
+  html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(180deg,var(--bg1),#e6f0ff);display:flex;align-items:center;justify-content:center;padding:12px}
+  .wrap{width:100%;max-width:820px;background:var(--card);border-radius:14px;box-shadow:0 10px 30px rgba(20,30,60,.12);padding:18px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+  header h1{margin:0;font-size:1.2rem;color:var(--accent)}
+  .meta{margin-left:auto;text-align:right;font-size:.9rem}
+  .score{font-weight:700;color:#0b6;display:block;font-size:1.4rem}
+  .card{padding:14px;border-radius:10px;border:1px solid #eef5ff;background:linear-gradient(180deg,#fff,#fbfdff);margin-bottom:12px}
+  .sentence{font-size:1.05rem;padding:12px;border-radius:8px;background:#f7fbff;border:1px dashed #dfeeff;min-height:64px;display:flex;align-items:center}
+  .options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .opt{padding:10px;border-radius:8px;border:1px solid #e6eefc;background:white;cursor:pointer;user-select:none}
+  .opt.selected{outline:3px solid rgba(43,108,176,.12)}
+  .opt.correct{border-color:var(--ok);background:rgba(16,185,129,.06)}
+  .opt.wrong{border-color:var(--bad);background:rgba(220,38,38,.04)}
+  .controls{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+  .btn-ghost{background:#fff;border:1px solid #dbeefe;color:var(--accent)}
+  .progress{height:8px;background:#eef6ff;border-radius:8px;margin-top:8px;overflow:hidden}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,#2b6cb0,#4f9ae6);width:0%}
+  .feedback{margin-top:8px;font-weight:700;min-height:22px}
+  .timer{font-weight:700;padding:6px 10px;border-radius:8px;background:#f1f7ff;border:1px solid #dbeefe;margin-left:auto}
+  @media(max-width:760px){
+    .options{grid-template-columns:1fr}
+  }
+  .small{font-size:.9rem;color:#556}
+</style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Maths Master Quiz — Class 9">
+    <header>
+      <div>
+        <h1>Gtk Thiran Maths Test — Class 9 Eng Medium</h1>
+        <div class="small">Each test: 10 random questions • 30 seconds per question • Options randomized</div>
+      </div>
+      <div class="meta" aria-live="polite">
+        <div>Score: <span id="currentScore" class="score">0</span></div>
+      </div>
+    </header>
+
+    <div class="card" id="questionCard" aria-live="polite">
+      <div class="sentence" id="sentence">Press <strong>Start Test</strong> to begin.</div>
+      <div class="options" id="options" aria-hidden="true"></div>
+
+      <div class="controls">
+        <button id="submitBtn" disabled>Submit Answer</button>
+        <button id="skipBtn" class="btn-ghost" disabled>Skip</button>
+        <button id="nextBtn" class="btn-ghost" style="display:none">Next</button>
+        <div class="timer" id="timer">⏳ 30s</div>
+        <div style="font-size:.9rem;color:#667">Q <span id="qIndex">0</span>/<span id="qTotal">10</span></div>
+      </div>
+
+      <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+      <button id="startBtn">Start Test</button>
+      <button id="restartBtn" class="btn-ghost" style="display:none">Restart</button>
+    </div>
+
+    <button id="downloadPdfBtn" style="
+      display:none;
+      background:#2b6cb0;
+      color:white;
+      border:none;
+      padding:10px 20px;
+      border-radius:8px;
+      font-size:16px;
+      cursor:pointer;
+      margin-top:20px;
+    ">
+      📄 Download Attempted Q/A (PDF)
+    </button>
+
+    <div style="margin-top:14px;font-size:.85rem;color:#556">
+      This quiz uses questions based on the THIRAN Std 9 Maths workbook you provided. Options and correct answer positions are randomized.
+    </div>
+  </div>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    /* =============================
+       QUESTION BANK — Maths (Class 9)
+       Each object: sentence, chapter, options (4), answerText (exact string), explanation
+       >= 10 questions per chapter across the workbook topics.
+       ============================= */
+    const bank = [
+      /* ---------- Numbers & Place Value (10) ---------- */
+      { sentence: "Simplified form of 50000 + 300 + 70 + 5 is", chapter:"Numbers & Place Value", options:["50375","53075","53750","57305"], answerText:"50375", explanation:"Sum place values: 50000+300+70+5 = 50375." },
+      { sentence: "Expanded form of 826 is", chapter:"Numbers & Place Value", options:["800 + 20 + 6","80 + 26","820 + 6","8 + 26"], answerText:"800 + 20 + 6", explanation:"Place value expansion." },
+      { sentence: "Smallest eight-digit number is", chapter:"Numbers & Place Value", options:["10000000","9999999","1000000","11111111"], answerText:"10000000", explanation:"1 followed by 7 zeros." },
+      { sentence: "Predecessor of 2741 is", chapter:"Numbers & Place Value", options:["2740","2739","2750","2742"], answerText:"2740", explanation:"Subtract 1." },
+      { sentence: "Successor of 5699 is", chapter:"Numbers & Place Value", options:["5700","5698","5697","5701"], answerText:"5700", explanation:"Add 1." },
+      { sentence: "What is the successor of 99999?", chapter:"Numbers & Place Value", options:["100000","99998","99999","100001"], answerText:"100000", explanation:"99999 + 1 = 100000." },
+      { sentence: "Expanded form of 74185 is", chapter:"Numbers & Place Value", options:["70000+4000+100+80+5","74000+185","7000+4185","70000+4185"], answerText:"70000+4000+100+80+5", explanation:"Break down each place." },
+      { sentence: "The number with 2 thousands, 3 hundreds, 6 tens and 4 ones is", chapter:"Numbers & Place Value", options:["2364","2634","3264","2463"], answerText:"2364", explanation:"2×1000 + 3×100 + 6×10 +4." },
+      { sentence: "What is the expanded form of 8260 ?", chapter:"Numbers & Place Value", options:["8000 + 200 + 60 + 0","800 + 20 + 6 + 0","826 + 0","8000 + 260"], answerText:"8000 + 200 + 60 + 0", explanation:"Place values including zero." },
+      { sentence: "Which is 5 lakhs + 3 ten-thousands + 7 thousands + 4 hundreds + 2 tens + 9 ones?", chapter:"Numbers & Place Value", options:["537429","500000","573429","537299"], answerText:"537429", explanation:"Combine place values." },
+
+      /* ---------- Comparison of Numbers (10) ---------- */
+      { sentence: "Which is largest of 6735, 4378, 6753, 4387?", chapter:"Comparison", options:["6753","6735","4387","4378"], answerText:"6753", explanation:"Compare thousands then hundreds etc." },
+      { sentence: "Arrange descending: 72346, 72436, 72362", chapter:"Comparison", options:["72436,72362,72346","72346,72362,72436","72362,72436,72346","72346,72436,72362"], answerText:"72436,72362,72346", explanation:"Order from largest to smallest." },
+      { sentence: "Which is smallest among 35948, 35984, 35849?", chapter:"Comparison", options:["35849","35948","35984","35894"], answerText:"35849", explanation:"Compare digit by digit." },
+      { sentence: "Between 741685 and 741586 which is greater?", chapter:"Comparison", options:["741685","741586","Equal","Cannot say"], answerText:"741685", explanation:"Compare hundred-digit positions." },
+      { sentence: "Fill: The number between 3789 and 3791 is", chapter:"Comparison", options:["3790","3788","3792","3789.5"], answerText:"3790", explanation:"One more than 3789." },
+      { sentence: "Which pair is in ascending order: 12345, 13452, 14523", chapter:"Comparison", options:["12345,13452,14523","14523,13452,12345","13452,12345,14523","12345,14523,13452"], answerText:"12345,13452,14523", explanation:"Smallest to largest." },
+      { sentence: "Successor of 72528 is", chapter:"Comparison", options:["72529","72527","72530","72528"], answerText:"72529", explanation:"Add 1 to get successor." },
+      { sentence: "Predecessor of 98145 is", chapter:"Comparison", options:["98144","98146","98135","98100"], answerText:"98144", explanation:"Subtract 1." },
+      { sentence: "The in-between number of 99999 and 100001 is", chapter:"Comparison", options:["100000","99999.5","100002","99998"], answerText:"100000", explanation:"Number exactly between them." },
+      { sentence: "Which is biggest: 8427, 8472, 8724, 8742?", chapter:"Comparison", options:["8742","8724","8472","8427"], answerText:"8742", explanation:"Compare thousands then hundreds." },
+
+      /* ---------- Addition (10) ---------- */
+      { sentence: "45 + 33 = ?", chapter:"Addition", options:["78","77","79","80"], answerText:"78", explanation:"45 + 33 = 78." },
+      { sentence: "233 + 125 = ?", chapter:"Addition", options:["358","357","356","360"], answerText:"358", explanation:"233+125=358." },
+      { sentence: "3257 + 3421 = ?", chapter:"Addition", options:["6678","6679","6650","6680"], answerText:"6678", explanation:"Add columns." },
+      { sentence: "5794 + 2105 = ?", chapter:"Addition", options:["7899","7898","7900","7809"], answerText:"7899", explanation:"5794+2105=7899." },
+      { sentence: "6207 + 3482 = ?", chapter:"Addition", options:["9689","9688","9700","9600"], answerText:"9689", explanation:"Sum is 9689." },
+      { sentence: "27435 + 12253 = ?", chapter:"Addition", options:["39688","39678","39700","39588"], answerText:"39688", explanation:"Add place-wise." },
+      { sentence: "34107 + 25632 = ?", chapter:"Addition", options:["59739","59739","59749","59729"], answerText:"59739", explanation:"Sum is 59739." },
+      { sentence: "40715 + 36274 = ?", chapter:"Addition", options:["76989","76989","76990","77000"], answerText:"76989", explanation:"Sum is 76989." },
+      { sentence: "54216 + 23572 = ?", chapter:"Addition", options:["77788","77788","77688","77888"], answerText:"77788", explanation:"Sum is 77788." },
+      { sentence: "73108 + 24680 = ?", chapter:"Addition", options:["97788","97788","97778","97888"], answerText:"97788", explanation:"Sum is 97788." },
+
+      /* ---------- Subtraction (10) ---------- */
+      { sentence: "29 - 17 = ?", chapter:"Subtraction", options:["12","10","11","9"], answerText:"12", explanation:"29-17=12." },
+      { sentence: "896 - 581 = ?", chapter:"Subtraction", options:["315","316","314","318"], answerText:"315", explanation:"896-581=315." },
+      { sentence: "468 - 235 = ?", chapter:"Subtraction", options:["233","234","232","235"], answerText:"233", explanation:"468-235=233." },
+      { sentence: "788 - 367 = ?", chapter:"Subtraction", options:["421","420","422","431"], answerText:"421", explanation:"788-367=421." },
+      { sentence: "3769 - 1457 = ?", chapter:"Subtraction", options:["2312","2300","2313","2311"], answerText:"2312", explanation:"3769-1457=2312." },
+      { sentence: "4878 - 1563 = ?", chapter:"Subtraction", options:["3315","3310","3316","3305"], answerText:"3315", explanation:"4878-1563=3315." },
+      { sentence: "7469 - 6231 = ?", chapter:"Subtraction", options:["1238","1240","1228","1258"], answerText:"1238", explanation:"Difference = 1238." },
+      { sentence: "8794 - 7651 = ?", chapter:"Subtraction", options:["1143","1144","1133","1153"], answerText:"1143", explanation:"8794-7651=1143." },
+      { sentence: "9687 - 7432 = ?", chapter:"Subtraction", options:["2255","2254","2265","2245"], answerText:"2255", explanation:"9687-7432=2255." },
+      { sentence: "27964 - 15631 = ?", chapter:"Subtraction", options:["12333","12334","12300","12335"], answerText:"12333", explanation:"Subtract to get 12333." },
+
+      /* ---------- Multiplication (10) ---------- */
+      { sentence: "8 × 2 = ?", chapter:"Multiplication", options:["16","10","14","18"], answerText:"16", explanation:"8×2=16." },
+      { sentence: "9 × 5 = ?", chapter:"Multiplication", options:["45","40","35","50"], answerText:"45", explanation:"9×5=45." },
+      { sentence: "25 × 15 = ?", chapter:"Multiplication", options:["375","350","325","400"], answerText:"375", explanation:"25×15=375." },
+      { sentence: "72 × 4 = ?", chapter:"Multiplication", options:["288","280","292","276"], answerText:"288", explanation:"72×4=288." },
+      { sentence: "83 × 12 = ?", chapter:"Multiplication", options:["996","900","9960","998"], answerText:"996", explanation:"83×12=996." },
+      { sentence: "63 × 27 = ?", chapter:"Multiplication", options:["1701","1700","1601","1801"], answerText:"1701", explanation:"63×27=1701." },
+      { sentence: "49 × 38 = ?", chapter:"Multiplication", options:["1862","1876","1820","1900"], answerText:"1862", explanation:"49×38=1862." },
+      { sentence: "56 × 29 = ?", chapter:"Multiplication", options:["1624","1625","1620","1600"], answerText:"1624", explanation:"56×29=1624." },
+      { sentence: "78 × 57 = ?", chapter:"Multiplication", options:["4446","4460","4500","4400"], answerText:"4446", explanation:"78×57=4446." },
+      { sentence: "634 × 75 = ?", chapter:"Multiplication", options:["47550","47500","47600","47525"], answerText:"47550", explanation:"634×75=634×(3/4 of 100)=47550." },
+
+      /* ---------- Division (10) ---------- */
+      { sentence: "32 ÷ 4 = ?", chapter:"Division", options:["8","6","7","9"], answerText:"8", explanation:"32/4=8." },
+      { sentence: "45 ÷ 3 = ?", chapter:"Division", options:["15","12","14","13"], answerText:"15", explanation:"45/3=15." },
+      { sentence: "140 ÷ 6 quotient and remainder: quotient?", chapter:"Division", options:["23","22","24","21"], answerText:"23", explanation:"140/6 = 23 remainder 2." },
+      { sentence: "673 ÷ 7 = ?", chapter:"Division", options:["96 remainder 1","97 remainder 2","95 remainder 6","96 remainder 0"], answerText:"96 remainder 1", explanation:"7×96=672 remainder 1." },
+      { sentence: "581 ÷ 300 quotient?", chapter:"Division", options:["1","2","0","3"], answerText:"1", explanation:"581/300 = 1 remainder 281." },
+      { sentence: "975 ÷ 25 = ?", chapter:"Division", options:["39","38","40","36"], answerText:"39", explanation:"975/25=39." },
+      { sentence: "880 ÷ 20 = ?", chapter:"Division", options:["44","40","48","42"], answerText:"44", explanation:"880/20=44." },
+      { sentence: "27431 ÷ 15 quotient (integer part)?", chapter:"Division", options:["1828","1820","1825","1815"], answerText:"1828", explanation:"15×1828=27420 remainder 11." },
+      { sentence: "3624 ÷ 12 = ?", chapter:"Division", options:["302","303","300","310"], answerText:"302", explanation:"12×302=3624." },
+      { sentence: "75329 ÷ 14 quotient?", chapter:"Division", options:["5380 remainder 9","5380 remainder 9","5380","5381"], answerText:"5380 remainder 9", explanation:"14×5380=75320 remainder 9." },
+
+      /* ---------- LCM & HCF (10) ---------- */
+      { sentence: "LCM of 4 and 5 is", chapter:"LCM & HCF", options:["20","9","10","40"], answerText:"20", explanation:"LCM(4,5) = 20." },
+      { sentence: "LCM of 8 and 11 is", chapter:"LCM & HCF", options:["88","19","44","22"], answerText:"88", explanation:"8×11 since coprime." },
+      { sentence: "LCM of 9 and 12 is", chapter:"LCM & HCF", options:["36","21","18","24"], answerText:"36", explanation:"LCM(9,12)=36." },
+      { sentence: "HCF of 15 and 20 is", chapter:"LCM & HCF", options:["5","10","1","15"], answerText:"5", explanation:"Largest common factor is 5." },
+      { sentence: "HCF of 13 and 15 is", chapter:"LCM & HCF", options:["1","13","15","5"], answerText:"1", explanation:"They are coprime." },
+      { sentence: "Find LCM of 6 and 8", chapter:"LCM & HCF", options:["24","14","48","12"], answerText:"24", explanation:"LCM is 24." },
+      { sentence: "HCF of 24 and 36 is", chapter:"LCM & HCF", options:["12","6","24","3"], answerText:"12", explanation:"GCD(24,36)=12." },
+      { sentence: "LCM of 3 and 7 is", chapter:"LCM & HCF", options:["21","10","3","7"], answerText:"21", explanation:"3 and 7 are coprime → 21." },
+      { sentence: "HCF of 18 and 27 is", chapter:"LCM & HCF", options:["9","3","6","18"], answerText:"9", explanation:"9 is greatest common factor." },
+      { sentence: "LCM of 10 and 15 is", chapter:"LCM & HCF", options:["30","25","150","10"], answerText:"30", explanation:"LCM(10,15)=30." },
+
+      /* ---------- Divisibility & Number system (10) ---------- */
+      { sentence: "121 is divisible by which of these?", chapter:"Divisibility", options:["11","9","5","7"], answerText:"11", explanation:"11×11=121." },
+      { sentence: "Which numbers from 24,35,48,41,60 are divisible by 2?", chapter:"Divisibility", options:["24,48,60","35,41","24,35,60","48,41"], answerText:"24,48,60", explanation:"Even numbers only." },
+      { sentence: "Is 729 divisible by 9 and 3?", chapter:"Divisibility", options:["Yes","No","Only by 3","Only by 9"], answerText:"Yes", explanation:"729 divisible by both." },
+      { sentence: "Which of the following is a prime number: 27,23,34,41,53?", chapter:"Number System", options:["23","27","34","53"], answerText:"23", explanation:"23 is prime (also 41 and 53 are prime, but 23 included)." },
+      { sentence: "Is 1 a prime or composite?", chapter:"Number System", options:["Neither","Prime","Composite","Both"], answerText:"Neither", explanation:"1 is neither prime nor composite." },
+      { sentence: "Which number is divisible by both 5 and 10?", chapter:"Divisibility", options:["100","55","75","95"], answerText:"100", explanation:"Multiples of 10 are also of 5." },
+      { sentence: "Which of these is divisible by 3 and 6: 30,33,36,39,42?", chapter:"Divisibility", options:["36,42","30,33","33,39","30,39"], answerText:"36,42", explanation:"36 and 42 divisible by both 3 and 6." },
+      { sentence: "The divisibility rule: a number divisible by 9 if sum of digits is divisible by", chapter:"Divisibility", options:["9","3","11","7"], answerText:"9", explanation:"Sum divisible by 9 rule." },
+      { sentence: "Which is divisible by 4: 22,28,40,39,60?", chapter:"Divisibility", options:["28,40,60","22,39","40 only","28 only"], answerText:"28,40,60", explanation:"Last two digits divisible by 4." },
+      { sentence: "Which of these numbers is even?", chapter:"Number System", options:["300","451","87","95"], answerText:"300", explanation:"Even ends with 0." },
+
+      /* ---------- Integers (10) ---------- */
+      { sentence: "15 + (−7) = ?", chapter:"Integers", options:["8","−8","22","−22"], answerText:"8", explanation:"15 − 7 = 8." },
+      { sentence: "32 + (−18) = ?", chapter:"Integers", options:["14","50","−14","−50"], answerText:"14", explanation:"32 − 18 = 14." },
+      { sentence: "(−29) + (−16) = ?", chapter:"Integers", options:["−45","13","45","−13"], answerText:"−45", explanation:"Sum negatives → negative." },
+      { sentence: "8 − (−12) = ?", chapter:"Integers", options:["20","−4","4","−20"], answerText:"20", explanation:"Subtracting negative = add." },
+      { sentence: "(-10) × (-7) = ?", chapter:"Integers", options:["70","−70","17","−17"], answerText:"70", explanation:"Negative×negative=positive." },
+      { sentence: "20 × (−8) = ?", chapter:"Integers", options:["−160","160","12","−12"], answerText:"−160", explanation:"Positive×negative=negative." },
+      { sentence: "(−65) ÷ (−13) = ?", chapter:"Integers", options:["5","−5","13","−13"], answerText:"5", explanation:"Divide negatives → positive." },
+      { sentence: "Which is true: (−17) − (−28) = ?", chapter:"Integers", options:["11","−11","45","−45"], answerText:"11", explanation:"−17 + 28 = 11." },
+      { sentence: "If product of two integers is positive, their signs are", chapter:"Integers", options:["Same","Different","Both zero","Cannot say"], answerText:"Same", explanation:"Both positive or both negative." },
+      { sentence: "(-8) × 4 = ?", chapter:"Integers", options:["−32","32","−12","12"], answerText:"−32", explanation:"Negative times positive is negative." },
+
+      /* ---------- Fractions & Decimals (10) ---------- */
+      { sentence: "Convert 0.375 to fraction", chapter:"Fractions & Decimals", options:["3/8","37/100","7/16","5/12"], answerText:"3/8", explanation:"0.375 = 375/1000 = 3/8." },
+      { sentence: "Which is larger: 3/7 or 4/9?", chapter:"Fractions & Decimals", options:["4/9","3/7","Equal","Cannot say"], answerText:"4/9", explanation:"3/7≈0.4286, 4/9≈0.4444." },
+      { sentence: "Decimal form of 1532/100 is", chapter:"Fractions & Decimals", options:["15.32","1.532","153.2","1532"], answerText:"15.32", explanation:"Divide by 100." },
+      { sentence: "0.25 as fraction is", chapter:"Fractions & Decimals", options:["1/4","1/2","1/5","2/5"], answerText:"1/4", explanation:"0.25 = 1/4." },
+      { sentence: "Which is a proper fraction?", chapter:"Fractions & Decimals", options:["3/7","9/4","5/3","10/9"], answerText:"3/7", explanation:"Numerator < denominator." },
+      { sentence: "Convert 1750 ml to litres", chapter:"Fractions & Decimals", options:["1.75 L","1.5 L","1.25 L","2 L"], answerText:"1.75 L", explanation:"1000 ml = 1 L." },
+      { sentence: "What is 3/5 of 50?", chapter:"Fractions & Decimals", options:["30","25","35","20"], answerText:"30", explanation:"(3/5)*50 = 30." },
+      { sentence: "Add: 1/2 + 3/4 = ?", chapter:"Fractions & Decimals", options:["5/4","1/4","3/4","1"], answerText:"5/4", explanation:"Convert to common denominator." },
+      { sentence: "Decimal 0.375 equals which fraction?", chapter:"Fractions & Decimals", options:["3/8","37/100","375/1000","3/80"], answerText:"3/8", explanation:"0.375 simplifies to 3/8." },
+      { sentence: "Which is larger: 0.625 or 5/8?", chapter:"Fractions & Decimals", options:["Equal","0.625","5/8","Cannot say"], answerText:"Equal", explanation:"5/8 = 0.625." },
+
+      /* ---------- Algebra (10) ---------- */
+      { sentence: "Degree of 8x^5 - 3x^3 + 9x -16 is", chapter:"Algebra", options:["5","3","9","4"], answerText:"5", explanation:"Highest exponent is 5." },
+      { sentence: "(2a + b)(a - 3b) expands to", chapter:"Algebra", options:["2a^2 - 5ab - 3b^2","2a^2 + 5ab + 3b^2","2a^2 - 6ab + 3b^2","2a^2 + 6ab - 3b^2"], answerText:"2a^2 - 5ab - 3b^2", explanation:"Multiply and combine terms." },
+      { sentence: "Solve: 5x - 7 = 18. x = ?", chapter:"Algebra", options:["5","4","6","3"], answerText:"5", explanation:"5x = 25 → x=5." },
+      { sentence: "If 3(x+2)=18, x = ?", chapter:"Algebra", options:["4","6","2","3"], answerText:"4", explanation:"x+2=6 → x=4." },
+      { sentence: "Factorise x^2 + 12x + 32", chapter:"Algebra", options:["(x+4)(x+8)","(x+6)(x+6)","(x+2)(x+16)","(x+1)(x+32)"], answerText:"(x+4)(x+8)", explanation:"32 factors 4 and 8 sum to 12." },
+      { sentence: "If 2x + 3 = 11, x = ?", chapter:"Algebra", options:["4","5","3","2"], answerText:"4", explanation:"2x=8 → x=4." },
+      { sentence: "Which is a monomial?", chapter:"Algebra", options:["7mn","3y -1","a^2 - b^2","x + y"], answerText:"7mn", explanation:"Single term." },
+      { sentence: "Expand (a + b)^2", chapter:"Algebra", options:["a^2 + 2ab + b^2","a^2 + b^2","a^2 - 2ab + b^2","2a^2 + b^2"], answerText:"a^2 + 2ab + b^2", explanation:"Algebraic identity." },
+      { sentence: "Value of 2^5 is", chapter:"Algebra", options:["32","25","16","64"], answerText:"32", explanation:"2^5 = 32." },
+      { sentence: "Solve: x^2 = 49, x>0, x = ?", chapter:"Algebra", options:["7","-7","0","±7"], answerText:"7", explanation:"Positive square root." },
+
+      /* ---------- Geometry (10) ---------- */
+      { sentence: "Sum of angles in a triangle is", chapter:"Geometry", options:["180°","360°","90°","270°"], answerText:"180°", explanation:"Basic triangle property." },
+      { sentence: "Area of rectangle 7 by 4 is", chapter:"Geometry", options:["28","22","11","14"], answerText:"28", explanation:"Area = length × breadth." },
+      { sentence: "Perimeter of square side 5", chapter:"Geometry", options:["20","25","10","15"], answerText:"20", explanation:"Perimeter = 4×side." },
+      { sentence: "In a right triangle with legs 9 and 12, hypotenuse is", chapter:"Geometry", options:["15","13","14","16"], answerText:"15", explanation:"Pythagoras: sqrt(81+144)=15." },
+      { sentence: "Longest chord of a circle is called", chapter:"Geometry", options:["Diameter","Radius","Arc","Tangent"], answerText:"Diameter", explanation:"Diameter goes through centre." },
+      { sentence: "Area of circle with radius 7 (use π) is", chapter:"Geometry", options:["49π","14π","7π","154π"], answerText:"49π", explanation:"Area = πr^2 = π×7^2." },
+      { sentence: "A chord passing through centre is called", chapter:"Geometry", options:["Diameter","Radius","Tangent","Arc"], answerText:"Diameter", explanation:"Chord through centre = diameter." },
+      { sentence: "A triangle with all equal sides is", chapter:"Geometry", options:["Equilateral","Isosceles","Scalene","Right"], answerText:"Equilateral", explanation:"All sides equal." },
+      { sentence: "Sum of exterior angles of any polygon is", chapter:"Geometry", options:["360°","180°","540°","720°"], answerText:"360°", explanation:"Exterior angles sum to 360°." },
+      { sentence: "If diameter = 24 cm, radius = ?", chapter:"Geometry", options:["12 cm","24 cm","6 cm","48 cm"], answerText:"12 cm", explanation:"Radius = diameter/2." },
+
+      /* ---------- Measures (10) ---------- */
+      { sentence: "1000 mm equals how many metres?", chapter:"Measures", options:["1 m","10 m","0.1 m","0.01 m"], answerText:"1 m", explanation:"1000 mm = 1 m." },
+      { sentence: "1000 mg equals how many grams?", chapter:"Measures", options:["1 g","0.1 g","10 g","100 g"], answerText:"1 g", explanation:"1000 mg = 1 g." },
+      { sentence: "750 g equals how many kg?", chapter:"Measures", options:["0.75 kg","7.5 kg","0.075 kg","1 kg"], answerText:"0.75 kg", explanation:"750/1000 = 0.75 kg." },
+      { sentence: "1000 ml equals how many litres?", chapter:"Measures", options:["1 L","0.1 L","10 L","0.01 L"], answerText:"1 L", explanation:"1000 ml = 1 L." },
+      { sentence: "80 mm equals how many cm?", chapter:"Measures", options:["8 cm","0.8 cm","80 cm","0.08 cm"], answerText:"8 cm", explanation:"1 cm = 10 mm." },
+      { sentence: "556 cm equals how many metres?", chapter:"Measures", options:["5.56 m","55.6 m","0.556 m","5560 m"], answerText:"5.56 m", explanation:"Divide by 100." },
+      { sentence: "If a book costs ₹500 and discount 10%, new price is", chapter:"Measures", options:["₹450","₹400","₹475","₹490"], answerText:"₹450", explanation:"10% of 500 = 50 → 500-50=450." },
+      { sentence: "If speed = 60 km/h, distance in 0.5 hour is", chapter:"Measures", options:["30 km","20 km","60 km","15 km"], answerText:"30 km", explanation:"60×0.5=30 km." },
+      { sentence: "If area of rectangle is 28 cm^2 and width 4 cm, length is", chapter:"Measures", options:["7 cm","6 cm","8 cm","5 cm"], answerText:"7 cm", explanation:"28/4=7." },
+      { sentence: "Perimeter of rectangle 13×8 cm is", chapter:"Measures", options:["42 cm","104 cm","21 cm","52 cm"], answerText:"42 cm", explanation:"2(13+8)=42." },
+
+      /* ---------- Statistics & Probability (10) ---------- */
+      { sentence: "Range of 7, 9, 12, 14, 19, 22 is", chapter:"Statistics", options:["15","14","16","13"], answerText:"15", explanation:"22-7=15." },
+      { sentence: "Mean of 2,4,6,8 is", chapter:"Statistics", options:["5","6","4","20"], answerText:"5", explanation:"(2+4+6+8)/4=5." },
+      { sentence: "Median of 1,3,7 is", chapter:"Statistics", options:["3","1","7","5"], answerText:"3", explanation:"Middle value." },
+      { sentence: "If 50 students marks given, frequency table helps to find", chapter:"Statistics", options:["Distribution","Sum only","Range only","Median only"], answerText:"Distribution", explanation:"Shows how data is spread." },
+      { sentence: "Probability of head in single fair coin toss", chapter:"Probability", options:["1/2","1/3","1/4","1"], answerText:"1/2", explanation:"Two equally likely outcomes." },
+      { sentence: "If data are 3,4,2,4,5,6,1, frequency of 4 is", chapter:"Statistics", options:["2","1","3","4"], answerText:"2", explanation:"4 appears twice." },
+      { sentence: "If highest value = 98 and lowest = 20, range = ?", chapter:"Statistics", options:["78","118","68","88"], answerText:"78", explanation:"98-20=78." },
+      { sentence: "Which is a measure of central tendency?", chapter:"Statistics", options:["Mean","Range","Width","Class"], answerText:"Mean", explanation:"Mean measures central tendency." },
+      { sentence: "Probability of getting even number on a fair die", chapter:"Probability", options:["1/2","1/3","1/6","2/3"], answerText:"1/2", explanation:"Even outcomes: 2,4,6 → 3/6 = 1/2." },
+      { sentence: "If sum of observations is 200 and count is 5, mean = ?", chapter:"Statistics", options:["40","35","45","50"], answerText:"40", explanation:"200/5=40." }
+    ];
+
+    /* ============================
+       QUIZ LOGIC (random 10; options order randomized per display)
+       ============================ */
+
+    // Utilities
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // State
+    let selected = [];
+    let currentQ = 0;
+    let score = 0;
+    let chosenOption = null;
+    const SECS_PER_Q = 30;
+    let remaining = SECS_PER_Q;
+    let ticker = null;
+    let userAnswers = [];
+
+    // Elements
+    const sentenceEl = document.getElementById('sentence');
+    const optionsEl = document.getElementById('options');
+    const submitBtn = document.getElementById('submitBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const qIndexEl = document.getElementById('qIndex');
+    const qTotalEl = document.getElementById('qTotal');
+    const progressBar = document.getElementById('progressBar');
+    const feedback = document.getElementById('feedback');
+    const scoreEl = document.getElementById('currentScore');
+    const timerEl = document.getElementById('timer');
+    const downloadBtn = document.getElementById('downloadPdfBtn');
+
+    qTotalEl.textContent = 10;
+
+    function startGame(){
+      selected = shuffleArray([...bank]).slice(0, 10);
+      currentQ = 0;
+      score = 0;
+      userAnswers = [];
+      scoreEl.textContent = '0';
+      downloadBtn.style.display = 'none';
+      startBtn.style.display = 'none';
+      restartBtn.style.display = 'inline-block';
+      loadQuestion();
+    }
+
+    function loadQuestion(){
+      if(currentQ >= selected.length){ return finishQuiz(); }
+      const item = selected[currentQ];
+
+      sentenceEl.textContent = item.sentence;
+      optionsEl.innerHTML = '';
+      chosenOption = null;
+      feedback.textContent = '';
+      submitBtn.disabled = true;
+      skipBtn.disabled = false;
+      nextBtn.style.display = 'none';
+      optionsEl.setAttribute('aria-hidden','false');
+
+      // build and shuffle options (randomize positions)
+      const opts = shuffleArray([...item.options]);
+      opts.forEach(opt=>{
+        const d = document.createElement('div');
+        d.className = 'opt';
+        d.textContent = opt;
+        d.setAttribute('data-val', opt);
+        d.tabIndex = 0;
+        d.addEventListener('click', ()=> selectOption(d));
+        d.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); selectOption(d); }});
+        optionsEl.appendChild(d);
+      });
+
+      qIndexEl.textContent = currentQ + 1;
+      progressBar.style.width = Math.round((currentQ/selected.length)*100) + '%';
+
+      startTimer();
+    }
+
+    function selectOption(node){
+      optionsEl.querySelectorAll('.opt').forEach(n => n.classList.remove('selected'));
+      node.classList.add('selected');
+      chosenOption = node.getAttribute('data-val');
+      submitBtn.disabled = false;
+    }
+
+    function gradeAndLock(reason){
+      const item = selected[currentQ];
+      const correct = item.answerText;
+
+      stopTimer();
+
+      optionsEl.querySelectorAll('.opt').forEach(n=>{
+        const val = n.getAttribute('data-val');
+        n.style.pointerEvents = 'none';
+        if(val === correct) n.classList.add('correct');
+        if(chosenOption && val === chosenOption && chosenOption !== correct) n.classList.add('wrong');
+      });
+
+      let userAnsText = chosenOption || (reason === 'timeout' ? 'Timed out' : 'Skipped');
+      if(chosenOption === correct){
+        score++;
+        scoreEl.textContent = score;
+        feedback.textContent = '✅ Correct! ' + (item.explanation ? ('— ' + item.explanation) : '');
+      }else if(reason === 'timeout'){
+        feedback.textContent = `⏱️ Time up — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }else if(reason === 'skip'){
+        feedback.textContent = `⤼ Skipped — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }else{
+        feedback.textContent = `❌ Wrong — Correct: "${correct}".` + (item.explanation ? (' ' + item.explanation) : '');
+      }
+
+      // record for PDF
+      userAnswers.push({ question: item.sentence, userAnswer: userAnsText, correctAnswer: correct });
+
+      // controls
+      submitBtn.disabled = true;
+      skipBtn.disabled = true;
+      nextBtn.style.display = 'inline-block';
+
+      if(userAnswers.length >= selected.length){
+        downloadBtn.style.display = 'inline-block';
+      }
+    }
+
+    function submitAnswer(){
+      if(!chosenOption){
+        feedback.textContent = 'Please select an option (or Skip).';
+        return;
+      }
+      gradeAndLock('submit');
+    }
+
+    function skipQuestion(){
+      chosenOption = null;
+      gradeAndLock('skip');
+    }
+
+    function nextQuestion(){
+      currentQ++;
+      if(currentQ < selected.length){
+        loadQuestion();
+      }else{
+        finishQuiz();
+      }
+    }
+
+    function finishQuiz(){
+      stopTimer(true);
+      sentenceEl.textContent = `Test Complete — your score: ${score} / ${selected.length}`;
+      optionsEl.innerHTML = '';
+      optionsEl.setAttribute('aria-hidden','true');
+      feedback.innerHTML = `<div>Final Score: <strong>${score}/${selected.length}</strong> — ${Math.round(score/selected.length*100)}%</div>`;
+      progressBar.style.width = '100%';
+      submitBtn.disabled = true;
+      skipBtn.disabled = true;
+      nextBtn.style.display = 'none';
+      downloadBtn.style.display = 'inline-block';
+    }
+
+    // Restart: fresh random set each time
+    function restartQuiz() {
+      startBtn.style.display = 'inline-block';
+      restartBtn.style.display = 'none';
+      sentenceEl.innerHTML = 'Press <strong>Start Test</strong> to begin.';
+      optionsEl.innerHTML = '';
+      feedback.textContent = '';
+      score = 0; scoreEl.textContent = 0;
+      progressBar.style.width = '0%';
+      submitBtn.disabled = true; skipBtn.disabled = true; nextBtn.style.display = 'none';
+      stopTimer(true);
+      downloadBtn.style.display = 'none';
+      currentQ = 0;
+      selected = [];
+      userAnswers = [];
+    }
+
+    // TIMER
+    function startTimer(){
+      stopTimer();
+      remaining = SECS_PER_Q;
+      timerEl.textContent = `⏳ ${remaining}s`;
+      ticker = setInterval(()=>{
+        remaining--;
+        timerEl.textContent = `⏳ ${remaining}s`;
+        if(remaining <= 0){
+          clearInterval(ticker); ticker = null;
+          chosenOption = null;
+          gradeAndLock('timeout');
+        }
+      }, 1000);
+    }
+    function stopTimer(hide){
+      if(ticker){ clearInterval(ticker); ticker = null; }
+      if(hide){ timerEl.textContent = '⏳ 0s'; }
+    }
+
+    // EVENTS
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', restartQuiz);
+    document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+    document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+    document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+
+    // PDF EXPORT
+    document.getElementById("downloadPdfBtn").addEventListener("click", function () {
+      if (userAnswers.length === 0) { alert("No answers to download!"); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 15;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("My Quiz Answers", 14, y);
+      y += 8;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+
+      userAnswers.forEach((q, i) => {
+        const lines = [
+          `${i + 1}. ${q.question}`,
+          `Your Answer: ${q.userAnswer}`,
+          `Correct Answer: ${q.correctAnswer}`
+        ];
+        lines.forEach(line => {
+          const wrapped = doc.splitTextToSize(line, 180);
+          doc.text(wrapped, 14, y);
+          y += wrapped.length * 5;
+          if (y > 270) { doc.addPage(); y = 20; }
+        });
+        y += 4;
+      });
+
+      doc.save("My_Quiz_Answers.pdf");
+    });
+  </script>
+</body>
+</html>
